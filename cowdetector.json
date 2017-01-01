@@ -1,0 +1,28 @@
+{
+    "databaseHost": "192.168.0.3",
+    "databasePort": 5432,
+    "databaseName": "cowdetector",
+    "databaseUser": "CowAdmin",
+    "databasePwd": "henumont4920",
+    "runningGpio": 27,
+    "boxes": [
+        {
+            "id": 4,
+            "name": "Box 4",
+            "gpioFoodA": 22,
+            "gpioFoodB": 23,
+            "gpioFoodPhysA": 7,
+            "gpioFoodPhysB": 8,
+            "gpioCalibButtonA": 25,
+            "gpioCalibButtonB": 24,
+            "detector": {
+                "type": "InnovationReader",
+                "gpioTagInRange": 17,
+                "port": "/dev/ttyAMA0"
+
+            }
+
+        }
+
+    ]
+}

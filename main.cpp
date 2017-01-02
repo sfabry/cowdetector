@@ -123,4 +123,3 @@ void cowLogMsgHandler(QtMsgType type, const QMessageLogContext &context, const Q
         std::cerr << query.lastQuery().toLatin1().data();
     }
 }
-

@@ -268,7 +268,7 @@ void CowBox::checkFoodDistribution()
     m_foodRelayPhysB->setOn(true);
     QTimer::singleShot(giveFoodA / m_foodSpeedA * 1000, this, SLOT(stopFoodA()));
     QTimer::singleShot(giveFoodB / m_foodSpeedB * 1000, this, SLOT(stopFoodB()));
-    qDebug() << name() << " : Start food distribution today, meal, given: " << eatenTodayA << eatenTodayB << " -- " << eatenMealA << eatenMealB << " -- " << giveFoodA << giveFoodB;
+    qDebug() << name() << " : Start food distribution to cow " << m_cow << " : today, meal, given: " << eatenTodayA << eatenTodayB << " -- " << eatenMealA << eatenMealB << " -- " << giveFoodA << giveFoodB;
 
     // Schedule next check for food
     QTimer::singleShot(1000 + qMax(giveFoodA / m_foodSpeedA * 1000, giveFoodB / m_foodSpeedB * 1000), this, SLOT(checkFoodDistribution()));

@@ -112,7 +112,7 @@ void CowBox::detectedIdChanged(const QString &id)
     QSqlQuery query(QSqlDatabase::database());
     query.prepare("SELECT cownumber, cardnumber FROM identification WHERE rfid = :rfid");
     query.bindValue(":rfid", id);
-    if (!query.exec()) qWarning() << "[CowBow] identification table query error : " << query.lastError().text();
+    if (!query.exec()) qWarning() << "[CowBox] identification table query error : " << query.lastError().text();
     else if (query.next()) {
         cow = query.value(0).toInt();
         card = query.value(1).toInt();
@@ -122,12 +122,12 @@ void CowBox::detectedIdChanged(const QString &id)
         QSqlQuery query(QSqlDatabase::database());
         query.prepare("INSERT INTO identification (rfid) VALUES (:rfid)");
         query.bindValue(":rfid",  id);
-        if (!query.exec()) qWarning() << "[CowBow] identification insert query error : " << query.lastError().text();
+        if (!query.exec()) qWarning() << "[CowBox] identification insert query error : " << query.lastError().text();
     }
 
     // Check cow number
     if (cow <= 0) {
-        qWarning() << "[CowBox] No cow for RFID : " << id << " on card " << card;
+        qWarning() << name() << " No cow for RFID : " << id << " on card " << card;
         return;
     }
     m_cowExitTimer->stop();         // Cow is connected, stop the timer until we loose the connection.
@@ -150,7 +150,7 @@ void CowBox::detectedIdChanged(const QString &id)
         QSqlQuery query(QSqlDatabase::database());
         query.prepare("SELECT fooda, foodb, mealcount, mealdelay, eatspeed FROM foodallocation WHERE cow = :cow ORDER BY id DESC LIMIT 1");
         query.bindValue(":cow", m_cow);
-        if (!query.exec()) qWarning() << "[CowBow] foodallocation table query error : " << query.lastError().text();
+        if (!query.exec()) qWarning() << "[CowBox] foodallocation table query error : " << query.lastError().text();
         else if (query.next()) {
             m_foodAllocation_A = query.value(0).toInt();
             m_foodAllocation_B = query.value(1).toInt();
@@ -203,11 +203,11 @@ void CowBox::checkFoodDistribution()
     // Don't send food if some is already given
     if (m_foodRelayA->on() || m_foodRelayB->on()) return;
     if ((m_foodAllocation_A == 0) && (m_foodAllocation_B == 0)) {
-        qWarning() << "[checkFoodDistribution] Cow " << m_cow << " has zero allocation for food : " << m_foodAllocation_A << m_foodAllocation_B;
+        qWarning() << name() <<" [checkFoodDistribution] Cow " << m_cow << " has zero allocation for food : " << m_foodAllocation_A << m_foodAllocation_B;
         return;
     }
     if (m_foodSpeedA == 0 || m_foodSpeedB == 0) {
-        qWarning() << "[checkFoodDistribution] Box " << m_config.value("id").toInt() << " has zero speed for food : " << m_foodSpeedA << m_foodSpeedB;
+        qWarning() << name() << " [checkFoodDistribution] Box has zero speed for food : " << m_foodSpeedA << m_foodSpeedB;
         return;
     }
 
@@ -313,7 +313,7 @@ void CowBox::readBoxParameters()
     QSqlQuery query(QSqlDatabase::database());
     query.prepare("SELECT newdaytime, idlestart1, idlestop1, idlestart2, idlestop2, foodspeeda, foodspeedb, calibrationtime, mealminimum, detectiondelay FROM box WHERE boxnumber = :boxnumber");
     query.bindValue(":boxnumber", m_config.value("id").toInt());
-    if (!query.exec()) qWarning() << "[CowBow] box table query error : " << query.lastError().text();
+    if (!query.exec()) qWarning() << "[CowBox] box table query error : " << query.lastError().text();
     else {
         if (query.next()) {
             m_newDayTime = query.value(0).toTime();
@@ -340,7 +340,7 @@ void CowBox::readBoxParameters()
             query.bindValue(":newDayTime",  m_newDayTime);
             query.bindValue(":foodSpeedA",  m_foodSpeedA);
             query.bindValue(":foodSpeedB",  m_foodSpeedB);
-            if (!query.exec()) qWarning() << "[CowBow] box insert query error : " << query.lastError().text();
+            if (!query.exec()) qWarning() << "[CowBox] box insert query error : " << query.lastError().text();
         }
     }
 
@@ -348,6 +348,6 @@ void CowBox::readBoxParameters()
     query.prepare("UPDATE box SET lastconnected = :lastconnected WHERE boxnumber = :boxnumber");
     query.bindValue(":boxnumber",   m_config.value("id").toInt());
     query.bindValue(":lastconnected", QDateTime::currentDateTime());
-    if (!query.exec()) qWarning() << "[CowBow] box update last connected error : " << query.lastError().text();
+    if (!query.exec()) qWarning() << "[CowBox] box update last connected error : " << query.lastError().text();
 
 }

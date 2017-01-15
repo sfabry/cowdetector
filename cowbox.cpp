@@ -145,6 +145,7 @@ void CowBox::detectedIdChanged(const QString &id)
         m_mealCount = -1;
         m_mealDelay = -1;
         m_eatSpeed = 6;
+        m_currentMealId = -1;
         m_foodMealA = 0.0;
         m_foodMealB = 0.0;
         QSqlQuery query(QSqlDatabase::database());
@@ -173,17 +174,20 @@ void CowBox::cowExit()
     }
     if (m_cow <= 0) return;
 
-    // Save the meal into database
-    QSqlQuery query(QSqlDatabase::database());
-    query.prepare("INSERT INTO meals (cow, box, fooda, foodb, entry, exit) VALUES (:cow, :box, :fooda, :foodb, :entry, :exit)");
-    query.bindValue(":cow"  ,  m_cow);
-    query.bindValue(":box"  ,  m_config.value("id").toInt());
-    query.bindValue(":fooda",  m_foodMealA);
-    query.bindValue(":foodb",  m_foodMealB);
-    query.bindValue(":entry",  m_entryTime);
-    query.bindValue(":exit" ,  QDateTime::currentDateTime());
-    if (!query.exec()) qWarning() << "[CowBox] meals insert query error : " << query.lastError().text();
+    // Save the empty meal into database to keep track of cow entry/exit between meals
+    if (m_currentMealId < 0) {
+        QSqlQuery query(QSqlDatabase::database());
+        query.prepare("INSERT INTO meals (cow, box, fooda, foodb, entry, exit) VALUES (:cow, :box, :fooda, :foodb, :entry, :exit)");
+        query.bindValue(":cow"  ,  m_cow);
+        query.bindValue(":box"  ,  m_config.value("id").toInt());
+        query.bindValue(":fooda",  m_foodMealA);
+        query.bindValue(":foodb",  m_foodMealB);
+        query.bindValue(":entry",  m_entryTime);
+        query.bindValue(":exit" ,  QDateTime::currentDateTime());
+        if (!query.exec()) qWarning() << "[CowBox] meals insert query error : " << query.lastError().text();
+    }
 
+    m_currentMealId = -1;
     m_cow = -1;
 
 }
@@ -229,8 +233,8 @@ void CowBox::checkFoodDistribution()
         qWarning() << "[CowBox] meals day query error : " << query.lastError().text();
         return;
     }
-    qreal eatenTodayA = query.value(0).toReal() + m_foodMealA;
-    qreal eatenTodayB = query.value(1).toReal() + m_foodMealB;
+    qreal eatenTodayA = query.value(0).toReal();
+    qreal eatenTodayB = query.value(1).toReal();
 
     // Check already allocated meal for the mealInterval
     if (m_mealCount <= 0) {
@@ -247,8 +251,8 @@ void CowBox::checkFoodDistribution()
         qWarning() << "[CowBox] meals day query error : " << query.lastError().text();
         return;
     }
-    qreal eatenMealA = query.value(0).toReal() + m_foodMealA;
-    qreal eatenMealB = query.value(1).toReal() + m_foodMealB;
+    qreal eatenMealA = query.value(0).toReal();
+    qreal eatenMealB = query.value(1).toReal();
 
     // Compute food to give
     qreal giveFoodA = qMin(m_foodAllocation_A - eatenTodayA, (qreal)m_foodAllocation_A / m_mealCount - eatenMealA);
@@ -274,6 +278,32 @@ void CowBox::checkFoodDistribution()
 
     // Schedule next check for food
     QTimer::singleShot(1000 + qMax(giveFoodA / m_foodSpeedA * 1000, giveFoodB / m_foodSpeedB * 1000), this, SLOT(checkFoodDistribution()));
+
+    // Save the meal into database
+    if (m_currentMealId < 0) {
+        QSqlQuery query(QSqlDatabase::database());
+        query.prepare("INSERT INTO meals (cow, box, fooda, foodb, entry, exit) VALUES (:cow, :box, :fooda, :foodb, :entry, :exit) RETURNING id");
+        query.bindValue(":cow"  ,  m_cow);
+        query.bindValue(":box"  ,  m_config.value("id").toInt());
+        query.bindValue(":fooda",  m_foodMealA);
+        query.bindValue(":foodb",  m_foodMealB);
+        query.bindValue(":entry",  m_entryTime);
+        query.bindValue(":exit" ,  QDateTime::currentDateTime());
+        if (!query.exec()) qWarning() << "[CowBox] meals insert query error : " << query.lastError().text();
+
+        // Get id of the row just inserted
+        if (query.next()) m_currentMealId = query.value(0).toInt();
+    }
+    else {
+        // Update current meal
+        QSqlQuery query(QSqlDatabase::database());
+        query.prepare("UPDATE meals SET fooda = :fooda, foodb = :foodb, exit = :exit WHERE id = :id");
+        query.bindValue(":fooda",  m_foodMealA);
+        query.bindValue(":foodb",  m_foodMealB);
+        query.bindValue(":exit" ,  QDateTime::currentDateTime());
+        query.bindValue(":id",  m_currentMealId);
+        if (!query.exec()) qWarning() << "[CowBox] meal update query error : " << query.lastError().text();
+    }
 }
 
 void CowBox::stopFoodA()

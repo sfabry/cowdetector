@@ -77,6 +77,7 @@ private:
     QDateTime m_entryTime;
 
     // Current meal distribution
+    int m_currentMealId = -1;
     qreal m_foodMealA = 0.0;
     qreal m_foodMealB = 0.0;
 };

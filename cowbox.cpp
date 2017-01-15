@@ -222,7 +222,9 @@ void CowBox::checkFoodDistribution()
     QSqlQuery query(QSqlDatabase::database());
     query.prepare("SELECT SUM(fooda), SUM(foodb) FROM meals WHERE cow = :cow AND entry > :starttime");
     query.bindValue(":cow", m_cow);
-    query.bindValue(":starttime", QDateTime(QDate::currentDate(), m_newDayTime));
+    QDate startDate = QDate::currentDate();
+    if (QTime::currentTime() < m_newDayTime) startDate = startDate.addDays(-1);     // When the new day time is not yet passed, we have to check against previous day.
+    query.bindValue(":starttime", QDateTime(startDate, m_newDayTime));
     if (!query.exec() || !query.next()) {
         qWarning() << "[CowBox] meals day query error : " << query.lastError().text();
         return;

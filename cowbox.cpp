@@ -214,7 +214,7 @@ void CowBox::checkFoodDistribution()
     // Check the 6gr per second limit
     int mealDuration = m_entryTime.msecsTo(QDateTime::currentDateTime());
     if (mealDuration > 500 && mealDuration < (m_foodMealA + m_foodMealB) * 1000.0 / m_eatSpeed) {
-        QTimer::singleShot(20000, this, SLOT(checkFoodDistribution()));
+        QTimer::singleShot(2000, this, SLOT(checkFoodDistribution()));
         return;
     }
 

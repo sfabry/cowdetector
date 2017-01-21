@@ -254,11 +254,13 @@ void CowBox::checkFoodDistribution()
     qreal eatenMealA = query.value(0).toReal();
     qreal eatenMealB = query.value(1).toReal();
 
-    // Compute food to give
-    qreal giveFoodA = qMin(m_foodAllocation_A - eatenTodayA, (qreal)m_foodAllocation_A / m_mealCount - eatenMealA);
-    qreal giveFoodB = qMin(m_foodAllocation_B - eatenTodayB, (qreal)m_foodAllocation_B / m_mealCount - eatenMealB);
-    giveFoodA = qMin(giveFoodA, (qreal)m_foodAllocation_A / (m_foodAllocation_A + m_foodAllocation_B) * m_mealMinimum);
-    giveFoodB = qMin(giveFoodB, (qreal)m_foodAllocation_B / (m_foodAllocation_A + m_foodAllocation_B) * m_mealMinimum);
+    // Compute food to give, in case food alloc < minimum give all remaining food
+    qreal giveFoodA = m_foodAllocation_A - eatenTodayA;
+    qreal giveFoodB = m_foodAllocation_B - eatenTodayB;
+    if (giveFoodA > 2 * m_mealMinimum) giveFoodA = qMin(giveFoodA, (qreal)m_foodAllocation_A / m_mealCount - eatenMealA);
+    if (giveFoodB > 2 * m_mealMinimum) giveFoodB = qMin(giveFoodB, (qreal)m_foodAllocation_B / m_mealCount - eatenMealB);
+    if (giveFoodA > 2 * m_mealMinimum) giveFoodA = qMin(giveFoodA, (qreal)m_foodAllocation_A / (m_foodAllocation_A + m_foodAllocation_B) * m_mealMinimum);
+    if (giveFoodB > 2 * m_mealMinimum) giveFoodB = qMin(giveFoodB, (qreal)m_foodAllocation_B / (m_foodAllocation_A + m_foodAllocation_B) * m_mealMinimum);
     if (giveFoodA + giveFoodB < 10) {
         // In the case the cow is still there without moving in 5 minutes
         QTimer::singleShot(5 * 60 * 1000, this, SLOT(checkFoodDistribution()));

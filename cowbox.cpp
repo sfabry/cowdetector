@@ -206,11 +206,11 @@ void CowBox::checkFoodDistribution()
 
     // Don't send food if some is already given
     if (m_foodRelayA->on() || m_foodRelayB->on()) return;
-    if ((m_foodAllocation_A == 0) && (m_foodAllocation_B == 0)) {
+    if ((m_foodAllocation_A < 10) && (m_foodAllocation_B < 10)) {
         qWarning() << name() <<" [checkFoodDistribution] Cow " << m_cow << " has zero allocation for food : " << m_foodAllocation_A << m_foodAllocation_B;
         return;
     }
-    if (m_foodSpeedA == 0 || m_foodSpeedB == 0) {
+    if (qFuzzyIsNull(m_foodSpeedA) || qFuzzyIsNull(m_foodSpeedB )) {
         qWarning() << name() << " [checkFoodDistribution] Box has zero speed for food : " << m_foodSpeedA << m_foodSpeedB;
         return;
     }
@@ -243,7 +243,7 @@ void CowBox::checkFoodDistribution()
         if (m_foodAllocation_A + m_foodAllocation_B > 6000) m_mealCount = 6;
     }
     int mealInterval = m_mealDelay * 60;
-    if (mealInterval <= 0) mealInterval = 18 * 3600 / m_mealCount;     // spread on 18 hours
+    if (mealInterval <= 0) mealInterval = qRound(18.0 * 3600.0 / m_mealCount);     // spread on 18 hours
     query.prepare("SELECT SUM(fooda), SUM(foodb) FROM meals WHERE cow = :cow AND entry > :starttime");
     query.bindValue(":cow", m_cow);
     query.bindValue(":starttime", QDateTime::currentDateTime().addSecs(-mealInterval));
@@ -255,13 +255,15 @@ void CowBox::checkFoodDistribution()
     qreal eatenMealB = query.value(1).toReal();
 
     // Compute food to give, in case food alloc < minimum give all remaining food
-    qreal giveFoodA = m_foodAllocation_A - eatenTodayA;
-    qreal giveFoodB = m_foodAllocation_B - eatenTodayB;
+    qreal giveFoodA = qMax(0.0, m_foodAllocation_A - eatenTodayA);
+    qreal giveFoodB = qMax(0.0, m_foodAllocation_B - eatenTodayB);
     if (giveFoodA > 2 * m_mealMinimum) giveFoodA = qMin(giveFoodA, (qreal)m_foodAllocation_A / m_mealCount - eatenMealA);
     if (giveFoodB > 2 * m_mealMinimum) giveFoodB = qMin(giveFoodB, (qreal)m_foodAllocation_B / m_mealCount - eatenMealB);
     if (giveFoodA > 2 * m_mealMinimum) giveFoodA = qMin(giveFoodA, (qreal)m_foodAllocation_A / (m_foodAllocation_A + m_foodAllocation_B) * m_mealMinimum);
     if (giveFoodB > 2 * m_mealMinimum) giveFoodB = qMin(giveFoodB, (qreal)m_foodAllocation_B / (m_foodAllocation_A + m_foodAllocation_B) * m_mealMinimum);
-    if (giveFoodA + giveFoodB < 10) {
+    giveFoodA = qRound(qMax(0.0, giveFoodA));
+    giveFoodB = qRound(qMax(0.0, giveFoodB));
+    if (giveFoodA + giveFoodB < 50) {
         // In the case the cow is still there without moving in 5 minutes
         QTimer::singleShot(5 * 60 * 1000, this, SLOT(checkFoodDistribution()));
         return;
@@ -270,12 +272,19 @@ void CowBox::checkFoodDistribution()
     // Give the food
     m_foodMealA += giveFoodA;
     m_foodMealB += giveFoodB;
-    m_foodRelayA->setOn(true);
-    m_foodRelayB->setOn(true);
-    m_foodRelayPhysA->setOn(true);
-    m_foodRelayPhysB->setOn(true);
-    QTimer::singleShot(giveFoodA / m_foodSpeedA * 1000, this, SLOT(stopFoodA()));
-    QTimer::singleShot(giveFoodB / m_foodSpeedB * 1000, this, SLOT(stopFoodB()));
+    int foodAonTime = giveFoodA / m_foodSpeedA * 1000;
+    int foodBonTime = giveFoodB / m_foodSpeedB * 1000;
+    if (foodAonTime > 1000) {
+        // Don't distribute for less than 1 seconds to avoid problem on the relay
+        m_foodRelayA->setOn(true);
+        m_foodRelayPhysA->setOn(true);
+        QTimer::singleShot(foodAonTime, this, SLOT(stopFoodA()));
+    }
+    if (foodBonTime > 1000) {
+        m_foodRelayB->setOn(true);
+        m_foodRelayPhysB->setOn(true);
+        QTimer::singleShot(foodBonTime, this, SLOT(stopFoodB()));
+    }
     qDebug() << name() << " : Start food distribution to cow " << m_cow << " : today, meal, given: " << eatenTodayA << eatenTodayB << " -- " << eatenMealA << eatenMealB << " -- " << giveFoodA << giveFoodB;
 
     // Schedule next check for food
